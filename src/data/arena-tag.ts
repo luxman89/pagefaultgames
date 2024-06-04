@@ -466,13 +466,14 @@ class ToxicSpikesTag extends ArenaTrapTag {
   }
 }
 
-class DelayedAttackTag extends ArenaTag {
+export class DelayedAttackTag extends ArenaTag {
   public targetIndex: BattlerIndex;
 
-  constructor(tagType: ArenaTagType, sourceMove: Moves, sourceId: integer, targetIndex: BattlerIndex) {
-    super(tagType, 3, sourceMove, sourceId);
+  constructor(tagType: ArenaTagType, sourceMove: Moves, sourceId: integer, targetIndex: BattlerIndex, side: ArenaTagSide = ArenaTagSide.BOTH) {
+    super(tagType, 3, sourceMove, sourceId, side);
 
     this.targetIndex = targetIndex;
+    this.side = side;
   }
 
   lapse(arena: Arena): boolean {
@@ -673,7 +674,7 @@ export function getArenaTag(tagType: ArenaTagType, turnCount: integer, sourceMov
     return new ToxicSpikesTag(sourceId, side);
   case ArenaTagType.FUTURE_SIGHT:
   case ArenaTagType.DOOM_DESIRE:
-    return new DelayedAttackTag(tagType, sourceMove, sourceId, targetIndex);
+    return new DelayedAttackTag(tagType, sourceMove, sourceId, targetIndex, side);
   case ArenaTagType.WISH:
     return new WishTag(turnCount, sourceId, side);
   case ArenaTagType.STEALTH_ROCK:
