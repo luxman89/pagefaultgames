@@ -207,6 +207,7 @@ declare module "i18next" {
       pokemonInfo: PokemonInfoTranslationEntries;
       commandUiHandler: SimpleTranslationEntries;
       fightUiHandler: SimpleTranslationEntries;
+      partyUiHandler: SimpleTranslationEntries;
       titles: SimpleTranslationEntries;
       trainerClasses: SimpleTranslationEntries;
       trainerNames: SimpleTranslationEntries;
