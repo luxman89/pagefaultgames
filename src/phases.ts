@@ -30,7 +30,7 @@ import { Weather, WeatherType, getRandomWeatherType, getTerrainBlockMessage, get
 import { TempBattleStat } from "./data/temp-battle-stat";
 import { ArenaTagSide, ArenaTrapTag, MistTag, TrickRoomTag } from "./data/arena-tag";
 import { ArenaTagType } from "./data/enums/arena-tag-type";
-import { CheckTrappedAbAttr, IgnoreOpponentStatChangesAbAttr, IgnoreOpponentEvasionAbAttr, PostAttackAbAttr, PostBattleAbAttr, PostDefendAbAttr, PostSummonAbAttr, PostTurnAbAttr, PostWeatherLapseAbAttr, PreSwitchOutAbAttr, PreWeatherDamageAbAttr, ProtectStatAbAttr, RedirectMoveAbAttr, BlockRedirectAbAttr, RunSuccessAbAttr, StatChangeMultiplierAbAttr, SuppressWeatherEffectAbAttr, SyncEncounterNatureAbAttr, applyAbAttrs, applyCheckTrappedAbAttrs, applyPostAttackAbAttrs, applyPostBattleAbAttrs, applyPostDefendAbAttrs, applyPostSummonAbAttrs, applyPostTurnAbAttrs, applyPostWeatherLapseAbAttrs, applyPreStatChangeAbAttrs, applyPreSwitchOutAbAttrs, applyPreWeatherEffectAbAttrs, BattleStatMultiplierAbAttr, applyBattleStatMultiplierAbAttrs, IncrementMovePriorityAbAttr, applyPostVictoryAbAttrs, PostVictoryAbAttr, BlockNonDirectDamageAbAttr as BlockNonDirectDamageAbAttr, applyPostKnockOutAbAttrs, PostKnockOutAbAttr, PostBiomeChangeAbAttr, applyPostFaintAbAttrs, PostFaintAbAttr, IncreasePpAbAttr, PostStatChangeAbAttr, applyPostStatChangeAbAttrs, AlwaysHitAbAttr, PreventBerryUseAbAttr, StatChangeCopyAbAttr, applyPostMoveUsedAbAttrs, PostMoveUsedAbAttr, MaxMultiHitAbAttr, HealFromBerryUseAbAttr } from "./data/ability";
+import { CheckTrappedAbAttr, IgnoreOpponentStatChangesAbAttr, IgnoreOpponentEvasionAbAttr, PostAttackAbAttr, PostBattleAbAttr, PostDefendAbAttr, PostSummonAbAttr, PostTurnAbAttr, PostWeatherLapseAbAttr, PreSwitchOutAbAttr, PreWeatherDamageAbAttr, ProtectStatAbAttr, RedirectMoveAbAttr, BlockRedirectAbAttr, RunSuccessAbAttr, StatChangeMultiplierAbAttr, SuppressWeatherEffectAbAttr, SyncEncounterNatureAbAttr, applyAbAttrs, applyCheckTrappedAbAttrs, applyPostAttackAbAttrs, applyPostBattleAbAttrs, applyPostDefendAbAttrs, applyPostSummonAbAttrs, applyPostTurnAbAttrs, applyPostWeatherLapseAbAttrs, applyPreStatChangeAbAttrs, applyPreSwitchOutAbAttrs, applyPreWeatherEffectAbAttrs, BattleStatMultiplierAbAttr, applyBattleStatMultiplierAbAttrs, IncrementMovePriorityAbAttr, applyPostVictoryAbAttrs, PostVictoryAbAttr, BlockNonDirectDamageAbAttr as BlockNonDirectDamageAbAttr, applyPostKnockOutAbAttrs, PostKnockOutAbAttr, PostBiomeChangeAbAttr, applyPostFaintAbAttrs, PostFaintAbAttr, IncreasePpAbAttr, PostStatChangeAbAttr, applyPostStatChangeAbAttrs, AlwaysHitAbAttr, PreventBerryUseAbAttr, StatChangeCopyAbAttr, applyPostMoveUsedAbAttrs, PostMoveUsedAbAttr, MaxMultiHitAbAttr, HealFromBerryUseAbAttr, applyPostMoveEndAbAttrs, PostMoveEndAbAttr } from "./data/ability";
 import { Unlockables, getUnlockableName } from "./system/unlockables";
 import { getBiomeKey } from "./field/arena";
 import { BattleType, BattlerIndex, TurnCommand } from "./battle";
@@ -1694,7 +1694,7 @@ export class CheckSwitchPhase extends BattlePhase {
       this.scene.ui.setMode(Mode.CONFIRM, () => {
         this.scene.ui.setMode(Mode.MESSAGE);
         this.scene.tryRemovePhase(p => p instanceof PostSummonPhase && p.player && p.fieldIndex === this.fieldIndex);
-        this.scene.unshiftPhase(new SwitchPhase(this.scene, this.fieldIndex, false, true));
+        this.scene.unshiftPhase(new SwitchPhase(this.scene, this.fieldIndex, false, true, false));
         this.end();
       }, () => {
         this.scene.ui.setMode(Mode.MESSAGE);
@@ -2675,6 +2675,12 @@ export class MovePhase extends BattlePhase {
 
   end() {
     if (!this.followUp && this.canMove()) {
+      const targetAbilities = [Abilities.EMERGENCY_EXIT, Abilities.WIMP_OUT];
+      const opponentsAbilities = this.pokemon.getOpponents().map(pokemon => pokemon.getAbility().id);
+
+      if (opponentsAbilities.some(ability => targetAbilities.includes(ability))) {
+        this.scene.unshiftPhase(new BerryPhase(this.scene))
+      }
       this.scene.unshiftPhase(new MoveEndPhase(this.scene, this.pokemon.getBattlerIndex()));
     }
 
@@ -2793,7 +2799,7 @@ export class MoveEffectPhase extends PokemonPhase {
                           target.addTag(BattlerTagType.FLINCHED, undefined, this.move.moveId, user.id);
                         }
                       }
-                      Utils.executeIf(!isProtected && !chargeEffect, () => applyFilteredMoveAttrs((attr: MoveAttr) => attr instanceof MoveEffectAttr && (attr as MoveEffectAttr).trigger === MoveEffectTrigger.HIT && (!attr.firstHitOnly || firstHit),
+                      Utils.executeIf(!isProtected && !chargeEffect && target.active, () => applyFilteredMoveAttrs((attr: MoveAttr) => attr instanceof MoveEffectAttr && (attr as MoveEffectAttr).trigger === MoveEffectTrigger.HIT && (!attr.firstHitOnly || firstHit),
                         user, target, this.move.getMove()).then(() => {
                         return Utils.executeIf(!target.isFainted() || target.canApplyAbility(), () => applyPostDefendAbAttrs(PostDefendAbAttr, target, user, this.move, hitResult).then(() => {
                           if (!user.isPlayer() && this.move.getMove() instanceof AttackMove) {
@@ -2964,6 +2970,12 @@ export class MoveEndPhase extends PokemonPhase {
     if (pokemon.isActive(true)) {
       pokemon.lapseTags(BattlerTagLapseType.AFTER_MOVE);
     }
+    
+    const handlePokemon = (pokemon: Pokemon) => {
+      applyPostMoveEndAbAttrs(PostMoveEndAbAttr, pokemon);
+    }
+
+    this.executeForAll(handlePokemon);
 
     this.scene.arena.setIgnoreAbilities(false);
 
@@ -3567,7 +3579,7 @@ export class FaintPhase extends PokemonPhase {
       if (!nonFaintedPartyMemberCount) {
         this.scene.unshiftPhase(new GameOverPhase(this.scene));
       } else if (nonFaintedPartyMemberCount >= this.scene.currentBattle.getBattlerCount() || (this.scene.currentBattle.double && !nonFaintedPartyMembers[0].isActive(true))) {
-        this.scene.pushPhase(new SwitchPhase(this.scene, this.fieldIndex, true, false));
+        this.scene.pushPhase(new SwitchPhase(this.scene, this.fieldIndex, true, false, false));
       }
       if (nonFaintedPartyMemberCount === 1 && this.scene.currentBattle.double) {
         this.scene.unshiftPhase(new ToggleDoublePositionPhase(this.scene, true));
@@ -4202,13 +4214,15 @@ export class SwitchPhase extends BattlePhase {
   protected fieldIndex: integer;
   private isModal: boolean;
   private doReturn: boolean;
+  private forcedSwitch: boolean;
 
-  constructor(scene: BattleScene, fieldIndex: integer, isModal: boolean, doReturn: boolean) {
+  constructor(scene: BattleScene, fieldIndex: integer, isModal: boolean, doReturn: boolean, forcedSwitch: boolean) {
     super(scene);
 
     this.fieldIndex = fieldIndex;
     this.isModal = isModal;
     this.doReturn = doReturn;
+    this.forcedSwitch = forcedSwitch;
   }
 
   start() {
@@ -4219,8 +4233,8 @@ export class SwitchPhase extends BattlePhase {
       return super.end();
     }
 
-    // Check if there is any space still in field
-    if (this.isModal && this.scene.getPlayerField().filter(p => !p.isFainted() && p.isActive(true)).length >= this.scene.currentBattle.getBattlerCount()) {
+    // Check if there is any space still in field and that a switch is not being forced
+    if ((this.isModal && this.scene.getPlayerField().filter(p => !p.isFainted() && p.isActive(true)).length >= this.scene.currentBattle.getBattlerCount()) && !this.forcedSwitch) {
       return super.end();
     }
 
