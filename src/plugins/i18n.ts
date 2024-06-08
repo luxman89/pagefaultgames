@@ -8,6 +8,7 @@ import { esConfig } from "#app/locales/es/config.js";
 import { frConfig } from "#app/locales/fr/config.js";
 import { itConfig } from "#app/locales/it/config.js";
 import { koConfig } from "#app/locales/ko/config.js";
+import { jpConfig } from "#app/locales/jp/config.js";
 import { ptBrConfig } from "#app/locales/pt_BR/config.js";
 import { zhCnConfig } from "#app/locales/zh_CN/config.js";
 import { zhTwConfig } from "#app/locales/zh_TW/config.js";
@@ -153,7 +154,7 @@ export function initI18n(): void {
     lng: lang,
     nonExplicitSupportedLngs: true,
     fallbackLng: "en",
-    supportedLngs: ["en", "es", "fr", "it", "de", "zh", "pt", "ko"],
+    supportedLngs: ["en", "es", "fr", "it", "de", "zh", "pt", "ko", "jp"],
     debug: true,
     interpolation: {
       escapeValue: false,
@@ -185,6 +186,9 @@ export function initI18n(): void {
       },
       ko: {
         ...koConfig
+      },
+      jp: {
+        ...jpConfig
       },
     },
     postProcess: ["korean-postposition"],
