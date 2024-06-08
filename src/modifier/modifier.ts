@@ -994,7 +994,7 @@ export class SpeciesStatBoosterModifier extends PokemonHeldItemModifier {
     const stat = args[1] as Stat;
     const statValue = args[2] as Utils.NumberHolder;
 
-    if (this.stats.includes(stat) && (this.species.includes(speciesId) || holder.isFusion() ? this.species.includes(fusionSpeciesId) : false)) {
+    if (this.stats.includes(stat) && (this.species.includes(speciesId) || (holder.isFusion() ? this.species.includes(fusionSpeciesId) : false))) {
       statValue.value *= this.multiplier;
       return true;
     }
