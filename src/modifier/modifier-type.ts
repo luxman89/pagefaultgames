@@ -144,7 +144,7 @@ export interface GeneratedPersistentModifierType {
   getPregenArgs(): any[];
 }
 
-class AddPokeballModifierType extends ModifierType {
+export class AddPokeballModifierType extends ModifierType {
   private pokeballType: PokeballType;
   private count: integer;
 

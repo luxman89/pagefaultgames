@@ -63,6 +63,9 @@ import { Abilities } from "./data/enums/abilities";
 import ArenaFlyout from "./ui/arena-flyout";
 import { EaseType } from "./ui/enums/ease-type";
 import { ExpNotification } from "./enums/exp-notification";
+import MysteryEncounter, { MysteryEncounterTier, MysteryEncounterVariant } from "./data/mystery-encounter";
+import { MysteryEncounterFlags } from "./data/mystery-encounter-flags";
+import { allMysteryEncounters } from "./data/mystery-encounters/mystery-encounters";
 
 export const bypassLogin = import.meta.env.VITE_BYPASS_LOGIN === "1";
 
@@ -191,6 +194,7 @@ export default class BattleScene extends SceneBase {
   public money: integer;
   public pokemonInfoContainer: PokemonInfoContainer;
   private party: PlayerPokemon[];
+  public mysteryEncounterFlags: MysteryEncounterFlags;
   /** Combined Biome and Wave count text */
   private biomeWaveText: Phaser.GameObjects.Text;
   private moneyText: Phaser.GameObjects.Text;
@@ -539,6 +543,10 @@ export default class BattleScene extends SceneBase {
       this.playTimeTimer.destroy();
     }
 
+    if (Utils.isNullOrUndefined(this.mysteryEncounterFlags)) {
+      this.mysteryEncounterFlags = new MysteryEncounterFlags(null);
+    }
+
     this.playTimeTimer = this.time.addEvent({
       delay: Utils.fixedInt(1000),
       repeat: -1,
@@ -761,6 +769,17 @@ export default class BattleScene extends SceneBase {
     return pokemon;
   }
 
+  removePokemonFromPlayerParty(pokemon: PlayerPokemon) {
+    if (!pokemon) {
+      return;
+    }
+
+    const partyIndex = this.party.indexOf(pokemon);
+    this.field.remove(pokemon, true);
+    this.party.splice(partyIndex, 1);
+    pokemon.destroy();
+  }
+
   addPokemonIcon(pokemon: Pokemon, x: number, y: number, originX: number = 0.5, originY: number = 0.5, ignoreOverride: boolean = false): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
 
@@ -948,7 +967,7 @@ export default class BattleScene extends SceneBase {
     }
   }
 
-  newBattle(waveIndex?: integer, battleType?: BattleType, trainerData?: TrainerData, double?: boolean): Battle {
+  newBattle(waveIndex?: integer, battleType?: BattleType, trainerData?: TrainerData, double?: boolean, mysteryEncounter?: MysteryEncounter): Battle {
     const _startingWave = Overrides.STARTING_WAVE_OVERRIDE || startingWave;
     const newWaveIndex = waveIndex || ((this.currentBattle?.waveIndex || (_startingWave - 1)) + 1);
     let newDouble: boolean;
@@ -992,6 +1011,20 @@ export default class BattleScene extends SceneBase {
         newTrainer = trainerData !== undefined ? trainerData.toTrainer(this) : new Trainer(this, trainerType, doubleTrainer ? TrainerVariant.DOUBLE : Utils.randSeedInt(2) ? TrainerVariant.FEMALE : TrainerVariant.DEFAULT);
         this.field.add(newTrainer);
       }
+
+      // Mystery Encounters
+      // The only time they can occur is in place of a standard wild battle
+      // They will also never be found after floor 180 of classic mode, and cannot be in the first 2 battles
+      if (this.gameMode.hasMysteryEncounters && newBattleType === BattleType.WILD && !this.gameMode.isBoss(newWaveIndex) && !(this.gameMode.isClassic && (newWaveIndex > 180 || newWaveIndex < 3))) {
+        // Roll for mystery encounter instead of wild battle (25% chance)
+        const roll = Utils.randSeedInt(64);
+        const successRate = Utils.isNullOrUndefined(Overrides.MYSTERY_ENCOUNTER_RATE_OVERRIDE) ? 25 : Overrides.MYSTERY_ENCOUNTER_RATE_OVERRIDE;
+
+        if (roll <= successRate) {
+          // Successful roll, this is a mystery encounter
+          newBattleType = BattleType.MYSTERY_ENCOUNTER;
+        }
+      }
     }
 
     if (double === undefined && newWaveIndex > 1) {
@@ -1029,6 +1062,20 @@ export default class BattleScene extends SceneBase {
     }, newWaveIndex << 3, this.waveSeed);
     this.currentBattle.incrementTurn(this);
 
+    if (newBattleType === BattleType.MYSTERY_ENCOUNTER) {
+      // Disable double battle on mystery encounters (it may be re-enabled as part of encounter)
+      this.currentBattle.double = false;
+
+      // Load or generate a mystery encounter
+      const newEncounter = this.getMysteryEncounter(mysteryEncounter);
+
+      // Add intro visuals for mystery encounter
+      newEncounter.initIntroVisuals(this);
+      this.field.add(newEncounter.introVisuals);
+
+      this.currentBattle.mysteryEncounter = newEncounter;
+    }
+
     //this.pushPhase(new TrainerMessageTestPhase(this, TrainerType.RIVAL, TrainerType.RIVAL_2, TrainerType.RIVAL_3, TrainerType.RIVAL_4, TrainerType.RIVAL_5, TrainerType.RIVAL_6));
 
     if (!waveIndex && lastBattle) {
@@ -1053,7 +1100,9 @@ export default class BattleScene extends SceneBase {
           isNewBiome = !Utils.randSeedInt(6 - biomeWaves);
         }, lastBattle.waveIndex << 4);
       }
-      const resetArenaState = isNewBiome || this.currentBattle.battleType === BattleType.TRAINER || this.currentBattle.battleSpec === BattleSpec.FINAL_BOSS;
+
+
+      const resetArenaState = isNewBiome || this.currentBattle.battleType === BattleType.TRAINER || this.currentBattle.battleType === BattleType.MYSTERY_ENCOUNTER || this.currentBattle.battleSpec === BattleSpec.FINAL_BOSS;
       this.getEnemyParty().forEach(enemyPokemon => enemyPokemon.destroy());
       this.trySpreadPokerus();
       if (!isNewBiome && (newWaveIndex % 10) === 5) {
@@ -1061,11 +1110,15 @@ export default class BattleScene extends SceneBase {
       }
       if (resetArenaState) {
         this.arena.removeAllTags();
-        playerField.forEach((_, p) => this.unshiftPhase(new ReturnPhase(this, p)));
 
-        for (const pokemon of this.getParty()) {
-          if (pokemon.hasAbility(Abilities.ICE_FACE)) {
-            pokemon.formIndex = 0;
+        // If last battle was mystery encounter and no battle occurred, skip return phase
+        if (lastBattle?.mysteryEncounter?.encounterVariant !== MysteryEncounterVariant.NO_BATTLE) {
+          playerField.forEach((_, p) => this.unshiftPhase(new ReturnPhase(this, p)));
+
+          for (const pokemon of this.getParty()) {
+            if (pokemon.hasAbility(Abilities.ICE_FACE)) {
+              pokemon.formIndex = 0;
+            }
           }
         }
         this.unshiftPhase(new ShowTrainerPhase(this));
@@ -1079,6 +1132,7 @@ export default class BattleScene extends SceneBase {
           this.triggerPokemonFormChange(pokemon, SpeciesFormChangeTimeOfDayTrigger);
         }
       }
+
       if (!this.gameMode.hasRandomBiomes && !isNewBiome) {
         this.pushPhase(new NextEncounterPhase(this));
       } else {
@@ -2363,5 +2417,45 @@ export default class BattleScene extends SceneBase {
       }) : []
     };
     (window as any).gameInfo = gameInfo;
+  }
+
+  /**
+   * Loads or generates a mystery encounter
+   * @param override - used to load session encounter when restarting game, etc.
+   * @returns
+   */
+  getMysteryEncounter(override: MysteryEncounter): MysteryEncounter {
+    // Loading override or session encounter
+    let encounter: MysteryEncounter;
+    if (!Utils.isNullOrUndefined(Overrides.MYSTERY_ENCOUNTER_OVERRIDE) && Overrides.MYSTERY_ENCOUNTER_OVERRIDE < allMysteryEncounters.length) {
+      encounter = allMysteryEncounters[Overrides.MYSTERY_ENCOUNTER_OVERRIDE];
+    } else {
+      encounter = override?.encounterType >= 0 ? allMysteryEncounters[override?.encounterType] : null;
+    }
+
+    // Generate new encounter if no overrides
+    if (!encounter) {
+      const tierValue = Utils.randSeedInt(64);
+      let tier = tierValue > 32 ? MysteryEncounterTier.COMMON : tierValue > 16 ? MysteryEncounterTier.UNCOMMON : tierValue > 6 ? MysteryEncounterTier.RARE : MysteryEncounterTier.SUPER_RARE;
+      let availableEncounters = [];
+
+      // If no valid encounters exist at tier, checks next tier down, continuing until there are some encounters available
+      while (availableEncounters.length === 0 && tier >= 0) {
+        availableEncounters = allMysteryEncounters.filter((encounter) => encounter?.meetsRequirements(this) && encounter.encounterTier === tier);
+        tier--;
+      }
+
+      // If absolutely no encounters are available, spawn 0th encounter (mysterious trainers)
+      if (availableEncounters.length === 0) {
+        return allMysteryEncounters[0];
+      }
+
+      encounter = availableEncounters[Utils.randSeedInt(availableEncounters.length)];
+    }
+
+    // New encounter object to not dirty flags
+    encounter = new MysteryEncounter(encounter);
+
+    return encounter;
   }
 }

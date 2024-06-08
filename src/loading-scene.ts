@@ -20,6 +20,7 @@ import {initAchievements} from "#app/system/achv";
 import {initTrainerTypeDialogue} from "#app/data/dialogue";
 import i18next from "i18next";
 import { initStatsKeys } from "./ui/game-stats-ui-handler";
+import { initMysteryEncounters } from "./data/mystery-encounters/mystery-encounters";
 
 export class LoadingScene extends SceneBase {
   constructor() {
@@ -339,6 +340,7 @@ export class LoadingScene extends SceneBase {
     initSpecies();
     initMoves();
     initAbilities();
+    initMysteryEncounters();
   }
 
   loadLoadingScreen() {

@@ -33,7 +33,8 @@ export enum PartyUiMode {
   REMEMBER_MOVE_MODIFIER,
   MODIFIER_TRANSFER,
   SPLICE,
-  RELEASE
+  RELEASE,
+  VIEW_PARTY
 }
 
 export enum PartyOption {

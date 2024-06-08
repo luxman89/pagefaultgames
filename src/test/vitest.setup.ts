@@ -9,6 +9,7 @@ import {initSpecies} from "#app/data/pokemon-species";
 import {initMoves} from "#app/data/move";
 import {initAbilities} from "#app/data/ability";
 import {initAchievements} from "#app/system/achv.js";
+import { initMysteryEncounters } from "../data/mystery-encounters/mystery-encounters";
 
 initAchievements();
 initStatsKeys();
@@ -19,3 +20,4 @@ initPokemonForms();
 initSpecies();
 initMoves();
 initAbilities();
+initMysteryEncounters();
