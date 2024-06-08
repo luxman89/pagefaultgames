@@ -227,6 +227,7 @@ export default class BattleScene extends SceneBase {
   public rngSeedOverride: string = "";
   public rngOffset: integer = 0;
 
+  public inputMethod: string;
   private infoToggles: InfoToggle[] = [];
 
   /**
