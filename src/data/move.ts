@@ -3321,6 +3321,74 @@ export class VariableMoveTypeAttr extends MoveAttr {
   }
 }
 
+export class FormChangeItemTypeAttr extends VariableMoveTypeAttr {
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    if ([user.species.speciesId, user.fusionSpecies?.speciesId].includes(Species.ARCEUS && Species.SILVALLY)) {
+      const form = user.species.speciesId === Species.ARCEUS || user.species.speciesId === Species.SILVALLY ? user.formIndex : user.fusionSpecies.formIndex;
+
+      switch (form) {
+      case 1: // Fist Plate / Fighting Memory
+        move.type = Type.FIGHTING;
+        break;
+      case 2: // Sky Plate / Flying Memory
+        move.type = Type.FLYING;
+        break;
+      case 3: // Toxic Plate / Poison Memory
+        move.type = Type.POISON;
+        break;
+      case 4: // Earth Plate / Ground Memory
+        move.type = Type.GROUND;
+        break;
+      case 5: // Stone Plate / Rock Memory
+        move.type = Type.ROCK;
+        break;
+      case 6: // Insect Plate / Bug Memory
+        move.type = Type.BUG;
+        break;
+      case 7: // Spooky Plate / Ghost Memory
+        move.type = Type.GHOST;
+        break;
+      case 8: // Iron Plate / Steel Memory
+        move.type = Type.STEEL;
+        break;
+      case 9: // Flame Plate / Fire Memory
+        move.type = Type.FIRE;
+        break;
+      case 10: // Splash Plate / Water Memory
+        move.type = Type.WATER;
+        break;
+      case 11: // Meadow Plate / Grass Memory
+        move.type = Type.GRASS;
+        break;
+      case 12: // Zap Plate / Electric Memory
+        move.type = Type.ELECTRIC;
+        break;
+      case 13: // Mind Plate / Psychic Memory
+        move.type = Type.PSYCHIC;
+        break;
+      case 14: // Icicle Plate / Ice Memory
+        move.type = Type.ICE;
+        break;
+      case 15: // Draco Plate / Dragon Memory
+        move.type = Type.DRAGON;
+        break;
+      case 16: // Dread Plate / Dark Memory
+        move.type = Type.DARK;
+        break;
+      case 17: // Pixie Plate / Fairy Memory
+        move.type = Type.FAIRY;
+        break;
+      default:
+        move.type = Type.NORMAL;
+        break;
+      }
+      return true;
+    }
+
+    return false;
+  }
+}
+
 export class TechnoBlastTypeAttr extends VariableMoveTypeAttr {
   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
     if ([user.species.speciesId, user.fusionSpecies?.speciesId].includes(Species.GENESECT)) {
@@ -6605,7 +6673,7 @@ export function initMoves() {
       .attr(ConfuseAttr)
       .soundBased(),
     new AttackMove(Moves.JUDGMENT, Type.NORMAL, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 4)
-      .partial(),
+      .attr(FormChangeItemTypeAttr),
     new AttackMove(Moves.BUG_BITE, Type.BUG, MoveCategory.PHYSICAL, 60, 100, 20, -1, 0, 4)
       .attr(StealEatBerryAttr),
     new AttackMove(Moves.CHARGE_BEAM, Type.ELECTRIC, MoveCategory.SPECIAL, 50, 90, 10, 70, 0, 4)
@@ -7375,7 +7443,7 @@ export function initMoves() {
     new AttackMove(Moves.NATURES_MADNESS, Type.FAIRY, MoveCategory.SPECIAL, -1, 90, 10, -1, 0, 7)
       .attr(TargetHalfHpDamageAttr),
     new AttackMove(Moves.MULTI_ATTACK, Type.NORMAL, MoveCategory.PHYSICAL, 120, 100, 10, -1, 0, 7)
-      .partial(),
+      .attr(FormChangeItemTypeAttr),
     /* Unused */
     new AttackMove(Moves.TEN_MILLION_VOLT_THUNDERBOLT, Type.ELECTRIC, MoveCategory.SPECIAL, 195, -1, 1, -1, 0, 7)
       .partial()
