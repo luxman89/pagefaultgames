@@ -33,6 +33,7 @@ import { Mode } from "./ui";
 import { addWindow } from "./ui-theme";
 import * as Challenge from "../data/challenge";
 import MoveInfoOverlay from "./move-info-overlay";
+import { getEggTierForSpecies } from "#app/data/egg.js";
 
 export type StarterSelectCallback = (starters: Starter[]) => void;
 
@@ -187,6 +188,7 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
   private pokemonCandyCountText: Phaser.GameObjects.Text;
   private pokemonCaughtHatchedContainer: Phaser.GameObjects.Container;
   private pokemonCaughtCountText: Phaser.GameObjects.Text;
+  private pokemonHatchedIcon : Phaser.GameObjects.Sprite;
   private pokemonHatchedCountText: Phaser.GameObjects.Text;
   private genOptionsText: Phaser.GameObjects.Text;
   private instructionsText: Phaser.GameObjects.Text;
@@ -577,10 +579,10 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
     this.pokemonCaughtCountText.setOrigin(0, 0);
     this.pokemonCaughtHatchedContainer.add(this.pokemonCaughtCountText);
 
-    const pokemonHatchedIcon = this.scene.add.sprite(1, 14, "items", "mystery_egg");
-    pokemonHatchedIcon.setOrigin(0, 0);
-    pokemonHatchedIcon.setScale(0.75);
-    this.pokemonCaughtHatchedContainer.add(pokemonHatchedIcon);
+    this.pokemonHatchedIcon = this.scene.add.sprite(1, 14, "egg_icons");
+    this.pokemonHatchedIcon.setOrigin(0.15, 0.2);
+    this.pokemonHatchedIcon.setScale(0.8);
+    this.pokemonCaughtHatchedContainer.add(this.pokemonHatchedIcon);
 
     this.pokemonHatchedCountText = addTextObject(this.scene, 24, 19, "0", TextStyle.SUMMARY_ALT);
     this.pokemonHatchedCountText.setOrigin(0, 0);
@@ -1730,11 +1732,26 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
         this.pokemonPassiveLabelText.setVisible(true);
         this.pokemonNatureLabelText.setVisible(true);
         this.pokemonCaughtCountText.setText(`${this.speciesStarterDexEntry.caughtCount}`);
+        if (species.speciesId === Species.MANAPHY || species.speciesId === Species.PHIONE) {
+          this.pokemonHatchedIcon.setFrame("manaphy");
+        } else {
+          this.pokemonHatchedIcon.setFrame(getEggTierForSpecies(species.getRootSpeciesId()));
+        }
         this.pokemonHatchedCountText.setText(`${this.speciesStarterDexEntry.hatchedCount}`);
         this.pokemonCaughtHatchedContainer.setVisible(true);
         if (pokemonPrevolutions.hasOwnProperty(species.speciesId)) {
           this.pokemonCaughtHatchedContainer.setY(16);
-          [ this.pokemonCandyIcon, this.pokemonCandyOverlayIcon, this.pokemonCandyDarknessOverlay, this.pokemonCandyCountText ].map(c => c.setVisible(false));
+          [
+            this.pokemonCandyIcon,
+            this.pokemonCandyOverlayIcon,
+            this.pokemonCandyDarknessOverlay,
+            this.pokemonCandyCountText,
+            this.pokemonHatchedIcon,
+            this.pokemonHatchedCountText
+          ].map(c => c.setVisible(false));
+        } else if (species.speciesId === Species.ETERNATUS) {
+          this.pokemonHatchedIcon.setVisible(false);
+          this.pokemonHatchedCountText.setVisible(false);
         } else {
           this.pokemonCaughtHatchedContainer.setY(25);
           this.pokemonCandyIcon.setTint(argbFromRgba(Utils.rgbHexToRgba(colorScheme[0])));
@@ -1745,6 +1762,8 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
           this.pokemonCandyCountText.setText(`x${this.scene.gameData.starterData[species.speciesId].candyCount}`);
           this.pokemonCandyCountText.setVisible(true);
           this.pokemonFormText.setVisible(true);
+          this.pokemonHatchedIcon.setVisible(true);
+          this.pokemonHatchedCountText.setVisible(true);
 
           let currentFriendship = this.scene.gameData.starterData[this.lastSpecies.speciesId].friendship;
           if (!currentFriendship || currentFriendship === undefined) {
