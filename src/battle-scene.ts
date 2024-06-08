@@ -313,7 +313,6 @@ export default class BattleScene extends SceneBase {
   }
 
   update() {
-    this.inputController.update();
     this.ui?.update();
   }
 
