@@ -8,6 +8,27 @@ export const keysDown = new Map<string, string>();
 // Variable to store the ID of the last touched element
 let lastTouchedId: string;
 
+/** Whether touch controls are disabled */
+let disabled: boolean = false;
+/** Whether the last touch event has finished before disabling */
+let finishedLastTouch: boolean = false;
+
+/**
+ * Disable touch controls
+ */
+export function disableTouchControls() {
+  disabled = true;
+  finishedLastTouch = false;
+}
+
+/**
+ * Enable touch controls
+ */
+export function enableTouchControls() {
+  disabled = false;
+  finishedLastTouch = false;
+}
+
 /**
  * Initialize touch controls by binding keys to buttons.
  *
@@ -15,7 +36,7 @@ let lastTouchedId: string;
  */
 export function initTouchControls(events: EventEmitter): void {
   preventElementZoom(document.querySelector("#dpad"));
-  preventElementZoom(document.querySelector("#apad"));
+  document.querySelectorAll(".apadBtn").forEach((element) => preventElementZoom(element as HTMLElement));
   // Select all elements with the 'data-key' attribute and bind keys to them
   for (const button of document.querySelectorAll("[data-key]")) {
     // @ts-ignore - Bind the key to the button using the dataset key
@@ -50,18 +71,19 @@ export function isMobile(): boolean {
 
 /**
  * Simulates a keyboard event on the canvas.
+ * Will only simulate the event if the key exists in the Button enum and the controls are not disabled.
  *
  * @param eventType - The type of the keyboard event ('keydown' or 'keyup').
  * @param key - The key to simulate.
  * @param events - The event emitter for handling input events.
- *
+ * @returns True if the simulation was successful, otherwise false.
  * @remarks
  * This function checks if the key exists in the Button enum. If it does, it retrieves the corresponding button
  * and emits the appropriate event ('input_down' or 'input_up') based on the event type.
  */
-function simulateKeyboardEvent(eventType: string, key: string, events: EventEmitter) {
-  if (!Button.hasOwnProperty(key)) {
-    return;
+function simulateKeyboardEvent(eventType: string, key: string, events: EventEmitter): boolean {
+  if (!Button.hasOwnProperty(key) || disabled) {
+    return false;
   }
   const button = Button[key];
 
@@ -79,6 +101,7 @@ function simulateKeyboardEvent(eventType: string, key: string, events: EventEmit
     });
     break;
   }
+  return true;
 }
 
 /**
@@ -99,20 +122,26 @@ function bindKey(node: HTMLElement, key: string, events) {
 
   node.addEventListener("touchstart", event => {
     event.preventDefault();
-    simulateKeyboardEvent("keydown", key, events);
+    if (!simulateKeyboardEvent("keydown", key, events)) {
+      return;
+    }
     keysDown.set(event.target["id"], node.id);
     node.classList.add("active");
   });
 
   node.addEventListener("touchend", event => {
     event.preventDefault();
-
+    if (disabled && finishedLastTouch) {
+      return;
+    }
+    finishedLastTouch = true;
     const pressedKey = keysDown.get(event.target["id"]);
     if (pressedKey && keys.has(pressedKey)) {
       const key = keys.get(pressedKey);
-      simulateKeyboardEvent("keyup", key, events);
+      if (!simulateKeyboardEvent("keyup", key, events)) {
+        return;
+      }
     }
-
     keysDown.delete(event.target["id"]);
     node.classList.remove("active");
 
