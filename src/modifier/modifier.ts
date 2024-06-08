@@ -989,12 +989,10 @@ export class SpeciesStatBoosterModifier extends PokemonHeldItemModifier {
     const holder = args[0] as Pokemon;
     /** The actual {@linkcode Species} of the holder, ignoring the effect of moves like Transform */
     const speciesId = holder.getSpeciesForm(true).speciesId;
-    /** The actual {@linkcode Species} of the {@linkcode Pokemon} fused with the holder, if applicable */
-    const fusionSpeciesId = holder.getFusionSpeciesForm(true).speciesId;
     const stat = args[1] as Stat;
     const statValue = args[2] as Utils.NumberHolder;
 
-    if (this.stats.includes(stat) && (this.species.includes(speciesId) || (holder.isFusion() ? this.species.includes(fusionSpeciesId) : false))) {
+    if (this.stats.includes(stat) && (this.species.includes(speciesId) || (holder.isFusion() ? this.species.includes(holder.getFusionSpeciesForm(true).speciesId) : false))) {
       statValue.value *= this.multiplier;
       return true;
     }
