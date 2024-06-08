@@ -1300,6 +1300,9 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
           success = true;
         }
       } else {
+        this.scene.gameData.localOnlyStarterData[this.lastSpecies.speciesId] ??= {};
+        const speciesStarterData = this.scene.gameData.localOnlyStarterData[this.lastSpecies.speciesId];
+
         const genStarters = this.starterSelectGenIconContainers[this.getGenCursorWithScroll()].getAll().length;
         const rows = Math.ceil(genStarters / 9);
         const row = Math.floor(this.cursor / 9);
@@ -1356,6 +1359,7 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
                 }
               }
             } while (newAbilityIndex !== this.abilityCursor);
+            speciesStarterData.abilityIndex = newAbilityIndex;
             this.setSpeciesDetails(this.lastSpecies, undefined, undefined, undefined, undefined, newAbilityIndex, undefined);
             success = true;
           }
@@ -1364,7 +1368,8 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
           if (this.canCycleNature) {
             const natures = this.scene.gameData.getNaturesForAttr(this.speciesStarterDexEntry.natureAttr);
             const natureIndex = natures.indexOf(this.natureCursor);
-            const newNature = natures[natureIndex < natures.length - 1 ? natureIndex + 1 : 0];
+            const newNature = natures[(natureIndex + 1) % natures.length];
+            speciesStarterData.nature = newNature;
             this.setSpeciesDetails(this.lastSpecies, undefined, undefined, undefined, undefined, undefined, newNature, undefined);
             success = true;
           }
@@ -1884,6 +1889,11 @@ export default class StarterSelectUiHandler extends MessageUiHandler {
       this.dexAttrCursor |= this.scene.gameData.getFormAttr(formIndex !== undefined ? formIndex : (formIndex = oldProps.formIndex));
       this.abilityCursor = abilityIndex !== undefined ? abilityIndex : (abilityIndex = oldAbilityIndex);
       this.natureCursor = natureIndex !== undefined ? natureIndex : (natureIndex = oldNatureIndex);
+
+      const localOnlyStarterData = this.scene.gameData.localOnlyStarterData[species.speciesId];
+      if (localOnlyStarterData) {
+        localOnlyStarterData.dexAttrCursor = this.dexAttrCursor;
+      }
     }
 
     this.pokemonSprite.setVisible(false);
