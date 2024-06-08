@@ -979,7 +979,8 @@ export class SpeciesStatBoosterModifier extends PokemonHeldItemModifier {
 
   /**
    * Boosts the incoming stat by a {@linkcode multiplier} if the stat is listed
-   * in {@linkcode stats} and if the holder's {@linkcode Species} is listed in {@linkcode species}.
+   * in {@linkcode stats} and if the holder's {@linkcode Species} (or its fused
+   * species) is listed in {@linkcode species}.
    * @param args [0] {@linkcode Pokemon} that holds the held item
    *             [1] {@linkcode Stat} being checked at the time
    *             [2] {@linkcode Utils.NumberHolder} that holds the resulting value of the stat
